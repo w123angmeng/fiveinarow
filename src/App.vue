@@ -5,6 +5,14 @@
 		},
 		onShow: function() {
 			console.log('App Show')
+			// uni.getUserProfile({
+			// 	desc: 'dev test',
+			// 	lang: 'en',
+			// 	success: (res)=> {
+			// 		console.log("用户信息：", res.userInfo)
+			// 	},
+			// 	fail: ()=> {}
+			// })
 		},
 		onHide: function() {
 			console.log('App Hide')
