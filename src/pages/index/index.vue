@@ -25,7 +25,7 @@
 				<text>{{resMes}}</text>
 			</view>
 			
-			<Chessboard @resMes="getResMes"></Chessboard>
+			<Chessboard @resMes="getResMes" @moveChess="moveChess" ref="chessboard"></Chessboard>
 		</view>
 		<view><canvas style="width: 300px; height: 200px;" canvas-id="firstCanvas" id="firstCanvas"></canvas></view>
 	</view>
@@ -63,11 +63,12 @@ export default {
 				uid: 'B'
 			};
 			this.setUserInfo(uInfo);
-			this.setGameStatus(1);
+			this.setGameStatus(3);
 			this.initGame(true);
 		}
 	},
 	onReady() {
+		// console.log('ref:',this.$refs.chessboard.drawChess(x, y, true))
 		// var context = uni.createCanvasContext('firstCanvas',this);
 		// console.log('context:', context);
 		// context.setStrokeStyle('#00ff00');
@@ -102,10 +103,23 @@ export default {
 		btnClickStart() {
 			this.setGameStatus(3);
 		},
+		moveChess(data) {
+			let that = this
+			uni.sendSocketMessage({
+				data: JSON.stringify({
+					type: !that.id ? 'game1' : 'game2',
+					message: data
+				}),
+				success: function() {
+					
+				}
+			});
+		},
 		initGame() {
+			console.log("初始化");
 			let that = this;
 			var socketTask = uni.connectSocket({
-				url: 'ws://127.0.0.1:8082',
+				url: 'ws://127.0.0.1:8081',
 				// data: JSON.stringify({
 				// 	text: 'game2'
 				// }),
@@ -127,10 +141,12 @@ export default {
 								uni.onSocketMessage(function(res) {
 									let data = JSON.parse(res.data);
 									console.log(data, '收到服务器内容：' + data.data);
-									if ((data.type = 'user')) {
+									if ((data.type == 'user')) {
 										that.setPlaymate(data.data);
 										!that.id ? that.setGameStatus(2) : null;
-									} else {
+									} else if(data.type == 'message') {
+										console.log("根据消息绘制")
+										this.$refs.chessboard.drawChess(1, 1, true)
 									}
 								});
 							}

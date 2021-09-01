@@ -16,8 +16,8 @@
 				chessArr: []
 			};
 		},
-		created() {
-			console.log("onReady")
+		mounted() {
+			console.log("组件mounted")
 			this.ctx = uni.createCanvasContext('chessboard1', this)
 			console.log("this.ctx1:",this.ctx)
 			this.initData(10)
@@ -168,7 +168,7 @@
 				let indX = x / 30,
 					indY = y / 30
 				this.chessArr[indY][indX] = this.num % 2 == 0 ? 1 : 2
-				
+				this.$emit('moveChess', {x: x, y:y})
 				// 判断输赢
 				if(this.isWinGame(x, y, this.num % 2 == 0 ? 1 : 2)) {
 					console.log("this.isWinGame():true")

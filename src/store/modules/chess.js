@@ -1,7 +1,7 @@
 export default module = {
 	namespaced: true,
     state: {
-		status: 3, // 状态 0 未开始、1 邀请中
+		status: 0, // 状态 0 未开始、1 邀请中
 		curGameId: '', //
 		playmate: {}, // 伙伴
     },
