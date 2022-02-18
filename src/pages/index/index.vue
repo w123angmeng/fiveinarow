@@ -109,49 +109,47 @@ export default {
 				data: JSON.stringify({
 					type: !that.id ? 'game1' : 'game2',
 					message: data
-				}),
-				success: function() {
-					
-				}
+				})
+			});
+		},
+		sendMsg() {
+			uni.sendSocketMessage({
+				data: JSON.stringify({
+					id: that.id,
+					status: status, // 状态 0 未开始、1 邀请中
+					msgInfo: that.userInfo,
+				})
 			});
 		},
 		initGame() {
 			console.log("初始化");
 			let that = this;
 			var socketTask = uni.connectSocket({
-				url: 'ws://127.0.0.1:8081',
+				url: 'ws://127.0.0.1:8082',
 				// data: JSON.stringify({
 				// 	text: 'game2'
 				// }),
-				header: {
-					'content-type': 'application/json;charset=utf8'
-				},
-				// protocols: ['chat'],
-				method: 'GET',
-				success: () => {
-					console.log('客户端：连接成功');
-					uni.onSocketOpen(function(res) {
-						console.log('WebSocket连接已打开！');
-						uni.sendSocketMessage({
-							data: JSON.stringify({
-								type: !that.id ? 'game1' : 'game2',
-								user: that.userInfo
-							}),
-							success: function() {
-								uni.onSocketMessage(function(res) {
-									let data = JSON.parse(res.data);
-									console.log(data, '收到服务器内容：' + data.data);
-									if ((data.type == 'user')) {
-										that.setPlaymate(data.data);
-										!that.id ? that.setGameStatus(2) : null;
-									} else if(data.type == 'message') {
-										console.log("根据消息绘制")
-										this.$refs.chessboard.drawChess(1, 1, true)
-									}
-								});
-							}
-						});
-					});
+				// header: {
+				// 	'content-type': 'application/json;charset=utf8'
+				// },
+				// // protocols: ['chat'],
+				// method: 'GET',
+				// success: () => {
+				// 	console.log('客户端：连接成功');
+				// }
+			});
+			uni.onSocketOpen(function(res) {
+				console.log('WebSocket连接已打开！');
+			});
+			uni.onSocketMessage(function(res) {
+				let data = JSON.parse(res.data);
+				console.log(data, '收到服务器内容：' + data.data);
+				if ((data.type == 'user')) {
+					that.setPlaymate(data.data);
+					!that.id ? that.setGameStatus(2) : null;
+				} else if(data.type == 'message') {
+					console.log("根据消息绘制")
+					this.$refs.chessboard.drawChess(1, 1, true)
 				}
 			});
 			console.log('socketTask：', socketTask);
@@ -159,9 +157,6 @@ export default {
 			uni.onSocketError(function(res) {
 				console.log('WebSocket连接打开失败，请检查！');
 			});
-			// uni.onSocketClose(function (res) {
-			//   console.log('WebSocket 已关闭！');
-			// });
 		},
 		btnClickShare() {
 			uni.share({
