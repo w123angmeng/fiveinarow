@@ -12,8 +12,9 @@
 		</view>
 		<view class="part2" v-else-if="[1, 2].includes(status)">
 			<image class="logo" :src="userInfo.avatarUrl || '/static/logo.png'"></image>
-			等待连接
+			{{status == 1 ? '等待连接' : '已连接'}}
 			<image class="logo" :src="playmate.avatarUrl || '/static/logo.png'"></image>
+			<button v-if="status == 1" @click="btnClickShare">邀请好友</button>
 			<button v-if="status == 2" @click="btnClickStart">开始游戏</button>
 		</view>
 		<view class="part3" v-else-if="status == 3">
@@ -174,7 +175,7 @@ export default {
 					that.setPlaymate(data.data);
 					that.setGameStatus(2) // 连接成功
 				} else if(data.type == 'message') {
-					console.log("根据消息绘制:", this.$refs,this)
+					console.log("根据消息绘制:", that.$refs,that)
 					that.$refs.chessboard.drawChess(data.data.x, data.data.y, true)
 				}
 			});
@@ -186,6 +187,9 @@ export default {
 		},
 		btnClickShare() {
 			let that = this
+			console.log("分享链接：", `http://localhost:8080/#/pages/index/index?fromUid=${that.userInfo.uid}&id=${that.curGameId}`)
+			return
+			
 			uni.share({
 				provider: 'weixin',
 				imageUrl: 'https://thirdwx.qlogo.cn/mmopen/vi_32/POgEwh4mIHO4nibH0KlMECNjjGxQUq24ZEaGT4poC6icRiccVGKSyXwibcPq4BWmiaIGuG1icwxaQX6grC9VemZoJ8rg/132',
