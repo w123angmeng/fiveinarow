@@ -1,3 +1,4 @@
+      
 <template>
 	<view class="content">
 		<view class="part1" v-if="status == 0">
@@ -6,8 +7,9 @@
 				<text class="title">{{ userInfo.nickName }}</text>
 			</view>
 			<button v-if="!userInfo.nickName" @click="btnClickAuth">点我授权</button>
-			<button @click="btnClickLogin">登录</button>
-			<button @click="btnClickShare">邀请好友</button>
+			<!-- <button @click="btnClickLogin">登录</button> -->
+			<!-- <button @click="btnClickShare">邀请好友</button> -->
+			<button @click="btnClickCreate">创建房间</button>
 		</view>
 		<view class="part2" v-else-if="[1, 2].includes(status)">
 			<image class="logo" :src="userInfo.avatarUrl || '/static/logo.png'"></image>
@@ -42,20 +44,25 @@ export default {
 		return {
 			title: 'Hello',
 			id: '',
-			resMes: ''
+			resMes: '',
+			fromId: ''
 		};
 	},
 	computed: {
 		...mapState({
 			status: state => state.chess.status,
 			userInfo: state => state.login.userInfo,
-			playmate: state => state.chess.playmate
+			playmate: state => state.chess.playmate,
+			curGameId: state => state.chess.curGameId
 		})
 	},
 	onLoad(e) {
 		console.log('onload page index');
 		if (e.id) {
 			this.id = e.id;
+			this.setGameId(e.id)
+			this.fromId = e.fromUid
+			// 授权
 			let uInfo = {
 				nickName: '微信用户',
 				avatarUrl: 'https://thirdwx.qlogo.cn/mmopen/vi_32/POgEwh4mIHO4nibH0KlMECNjjGxQUq24ZEaGT4poC6icRiccVGKSyXwibcPq4BWmiaIGuG1icwxaQX6grC9VemZoJ8rg/132',
@@ -98,72 +105,88 @@ export default {
 		...mapMutations({
 			setGameStatus: 'chess/setGameStatus',
 			setUserInfo: 'login/setUserInfo',
-			setPlaymate: 'chess/setPlaymate'
+			setPlaymate: 'chess/setPlaymate',
+			setGameId: "chess/setGameId"
 		}),
 		btnClickStart() {
 			this.setGameStatus(3);
 		},
 		moveChess(data) {
 			let that = this
+			console.log("对方:", that.playmate)
 			uni.sendSocketMessage({
 				data: JSON.stringify({
-					type: !that.id ? 'game1' : 'game2',
-					message: data
-				}),
-				success: function() {
-					
-				}
+					type: 'message',
+					data: data,
+					toId: that.playmate.uid
+				})
 			});
 		},
-		initGame() {
+		initGame(joinFlag = false) {
 			console.log("初始化");
 			let that = this;
 			var socketTask = uni.connectSocket({
-				url: 'ws://127.0.0.1:8081',
+				url: `ws://127.0.0.1:8082/websocket?uid=${that.userInfo.uid}&id=${that.curGameId}`,
 				// data: JSON.stringify({
 				// 	text: 'game2'
 				// }),
-				header: {
-					'content-type': 'application/json;charset=utf8'
-				},
-				// protocols: ['chat'],
-				method: 'GET',
-				success: () => {
-					console.log('客户端：连接成功');
-					uni.onSocketOpen(function(res) {
-						console.log('WebSocket连接已打开！');
-						uni.sendSocketMessage({
-							data: JSON.stringify({
-								type: !that.id ? 'game1' : 'game2',
-								user: that.userInfo
-							}),
-							success: function() {
-								uni.onSocketMessage(function(res) {
-									let data = JSON.parse(res.data);
-									console.log(data, '收到服务器内容：' + data.data);
-									if ((data.type == 'user')) {
-										that.setPlaymate(data.data);
-										!that.id ? that.setGameStatus(2) : null;
-									} else if(data.type == 'message') {
-										console.log("根据消息绘制")
-										this.$refs.chessboard.drawChess(1, 1, true)
-									}
-								});
-							}
-						});
+				// header: {
+				// 	'content-type': 'application/json;charset=utf8'
+				// },
+				// // protocols: ['chat'],
+				// method: 'GET',
+				// success: () => {
+				// 	console.log('客户端：连接成功');
+				// }
+			});
+			uni.onSocketOpen(function(res) {
+				console.log('WebSocket连接已打开！');
+				if(!joinFlag) {
+					uni.sendSocketMessage({
+						data: JSON.stringify({
+							type: 'create',
+							data: that.userInfo,
+							id: '',
+							toId: ''
+						})
+					});
+				} else {
+					uni.sendSocketMessage({
+						data: JSON.stringify({
+							type: 'user',
+							data: that.userInfo,
+							id: that.curGameId,
+							toId: that.fromId
+						})
 					});
 				}
 			});
+			uni.onSocketMessage(function(res) {
+				let data = JSON.parse(res.data);
+				console.log(data, '收到服务器内容：' + data.data);
+				if(data.type == 'create') {
+					that.setGameId(data.id)
+					uni.showToast({
+					    title: '创建成功，等待连接~',
+					    duration: 2000
+					});
+					that.setGameStatus(1) // 邀请中
+				} else if (data.type == 'user') {
+					that.setPlaymate(data.data);
+					that.setGameStatus(2) // 连接成功
+				} else if(data.type == 'message') {
+					console.log("根据消息绘制:", this.$refs,this)
+					that.$refs.chessboard.drawChess(data.data.x, data.data.y, true)
+				}
+			});
 			console.log('socketTask：', socketTask);
-
+			
 			uni.onSocketError(function(res) {
 				console.log('WebSocket连接打开失败，请检查！');
 			});
-			// uni.onSocketClose(function (res) {
-			//   console.log('WebSocket 已关闭！');
-			// });
 		},
 		btnClickShare() {
+			let that = this
 			uni.share({
 				provider: 'weixin',
 				imageUrl: 'https://thirdwx.qlogo.cn/mmopen/vi_32/POgEwh4mIHO4nibH0KlMECNjjGxQUq24ZEaGT4poC6icRiccVGKSyXwibcPq4BWmiaIGuG1icwxaQX6grC9VemZoJ8rg/132',
@@ -172,7 +195,7 @@ export default {
 				title: '来挑战我吧',
 				miniProgram: {
 					id: 'wx37cca9830b648391',
-					path: 'pages/index/index?id=1',
+					path: `pages/index/index?fromUid=${that.userInfo.uid}&id=${that.curGameId}`,
 					type: 2
 				},
 				success: function(res) {
@@ -222,15 +245,27 @@ export default {
 						gender: resInfo.gender,
 						uid: 'A'
 					};
-					this.setUserInfo(uInfo);
-					// 等待状态
-					this.setGameStatus(1);
-					this.initGame();
+					that.setUserInfo(uInfo);
+					console.log(that.userInfo)
+					
 				},
 				fail: err => {
 					console.log('获取信息失败：', err);
 				}
 			});
+		},
+		// 创建游戏
+		btnClickCreate() {
+			if(Object.keys(this.userInfo).length == 0) {
+				uni.showToast({
+				    title: '请先授权~',
+				    duration: 2000,
+					icon: 'none'
+				});
+				return
+			}
+			
+			this.initGame();
 		}
 	}
 };
@@ -276,3 +311,5 @@ export default {
 	color: #8f8f94;
 }
 </style>
+
+    
